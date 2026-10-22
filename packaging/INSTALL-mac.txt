@@ -1,0 +1,24 @@
+шаВеRMA HIT MAKER — установка на Mac
+====================================
+
+1. Распакуй архив (двойной клик по zip).
+2. Двойной клик по install.command.
+
+   Если macOS пишет «не удаётся проверить разработчика»:
+   - открой «Системные настройки → Конфиденциальность и безопасность»,
+     внизу нажми «Всё равно открыть» и запусти install.command ещё раз;
+   - или открой Терминал, напиши `bash ` (с пробелом), перетащи туда
+     install.command и нажми Enter.
+
+3. В Ableton: Settings → Plug-Ins →
+   включи «Use Audio Units v2» и «Use VST3 Plug-In System Folders» → Rescan.
+4. Плагин лежит в Plug-Ins → Melody Makers → ShaVeRMA Hit Maker.
+   Кидай на мастер-канал и жми большую красную кнопку.
+
+Работает на Intel и Apple Silicon (M1–M4).
+
+Ручная установка (если скрипт не хочет):
+  ShaVeRMA Hit Maker.vst3      →  ~/Library/Audio/Plug-Ins/VST3/
+  ShaVeRMA Hit Maker.component →  ~/Library/Audio/Plug-Ins/Components/
+  потом в Терминале:
+  xattr -cr ~/Library/Audio/Plug-Ins/VST3/ShaVeRMA* ~/Library/Audio/Plug-Ins/Components/ShaVeRMA*

@@ -1,0 +1,121 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  PLUGIN_NAME: ShaVeRMA Hit Maker
+  PLUGINVAL_VERSION: v1.0.4
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: mac
+            os: macos-14
+          - name: windows
+            os: windows-2022
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure (mac, universal)
+        if: runner.os == 'macOS'
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DHITMAKER_BUILD_TESTS=ON
+
+      - name: Configure (windows)
+        if: runner.os == 'Windows'
+        run: cmake -B build -DHITMAKER_BUILD_TESTS=ON
+
+      - name: Build
+        run: cmake --build build --config Release --parallel 4
+
+      - name: Self-test (DSP)
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            ./build/HitMakerSelfTest_artefacts/Release/HitMakerSelfTest.exe
+          else
+            ./build/HitMakerSelfTest_artefacts/Release/HitMakerSelfTest
+          fi
+
+      - name: pluginval (mac)
+        if: runner.os == 'macOS'
+        run: |
+          curl -fsSL -o pluginval.zip "https://github.com/Tracktion/pluginval/releases/download/${PLUGINVAL_VERSION}/pluginval_macOS.zip"
+          unzip -q pluginval.zip
+          ./pluginval.app/Contents/MacOS/pluginval --strictness-level 8 --skip-gui-tests \
+            --validate "build/HitMaker_artefacts/Release/VST3/${PLUGIN_NAME}.vst3"
+
+      - name: pluginval (windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          curl -fsSL -o pluginval.zip "https://github.com/Tracktion/pluginval/releases/download/${PLUGINVAL_VERSION}/pluginval_Windows.zip"
+          7z x -y pluginval.zip > /dev/null
+          ./pluginval.exe --strictness-level 8 --skip-gui-tests \
+            --validate "build/HitMaker_artefacts/Release/VST3/${PLUGIN_NAME}.vst3"
+
+      - name: Package (mac)
+        if: runner.os == 'macOS'
+        run: |
+          OUT="dist/ShaVeRMA-Hit-Maker-mac"
+          mkdir -p "$OUT"
+          cp -R "build/HitMaker_artefacts/Release/VST3/${PLUGIN_NAME}.vst3" "$OUT/"
+          cp -R "build/HitMaker_artefacts/Release/AU/${PLUGIN_NAME}.component" "$OUT/"
+          codesign --force --deep --sign - "$OUT/${PLUGIN_NAME}.vst3"
+          codesign --force --deep --sign - "$OUT/${PLUGIN_NAME}.component"
+          cp packaging/install.command "$OUT/"
+          chmod +x "$OUT/install.command"
+          cp packaging/INSTALL-mac.txt "$OUT/INSTALL-RU.txt"
+          ditto -c -k --keepParent "$OUT" dist/ShaVeRMA-Hit-Maker-mac.zip
+
+      - name: Package (windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $out = "dist/ShaVeRMA-Hit-Maker-windows"
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+          Copy-Item -Recurse "build/HitMaker_artefacts/Release/VST3/$env:PLUGIN_NAME.vst3" $out
+          Copy-Item packaging/install.bat $out
+          Copy-Item packaging/INSTALL-windows.txt "$out/INSTALL-RU.txt"
+          Compress-Archive -Path $out -DestinationPath dist/ShaVeRMA-Hit-Maker-windows.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ShaVeRMA-Hit-Maker-${{ matrix.name }}
+          path: dist/*.zip
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/*.zip \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "шаВеRMA Hit Maker $GITHUB_REF_NAME" \
+            --notes "Mac (Intel + Apple Silicon): ShaVeRMA-Hit-Maker-mac.zip — VST3 + AU.
+          Windows: ShaVeRMA-Hit-Maker-windows.zip — VST3.
+
+          Распакуй, запусти install.command / install.bat, в Ableton нажми Rescan.
+          Подробности — в INSTALL-RU.txt внутри архива."

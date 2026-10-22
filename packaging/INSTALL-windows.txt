@@ -1,0 +1,16 @@
+шаВеRMA HIT MAKER — установка на Windows
+========================================
+
+1. Распакуй архив (правый клик → «Извлечь всё»). Из zip напрямую не запускай.
+2. Двойной клик по install.bat → согласись на запрос прав администратора.
+
+   Если Windows показывает синее окно «Windows защитила ваш компьютер»:
+   «Подробнее» → «Выполнить в любом случае».
+
+3. В Ableton: Options → Preferences → Plug-Ins →
+   включи «Use VST3 Plug-In System Folders» → Rescan.
+4. Плагин лежит в Plug-Ins → Melody Makers → ShaVeRMA Hit Maker.
+   Кидай на мастер-канал и жми большую красную кнопку.
+
+Ручная установка (если скрипт не хочет):
+  скопируй папку «ShaVeRMA Hit Maker.vst3» в C:\Program Files\Common Files\VST3\

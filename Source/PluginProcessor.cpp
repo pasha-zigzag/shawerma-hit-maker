@@ -121,12 +121,12 @@ void HitMakerProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     const float hit = hitParam->load() > 0.5f ? 1.0f : 0.0f;
     const float stas = stasParam->load() > 0.5f ? 1.0f : 0.0f;
 
-    meatSmoothed.setTargetValue (clamp01 (meatParam->load() + hit * 0.35f));
-    spiceSmoothed.setTargetValue (clamp01 (spiceParam->load() + hit * 0.30f));
-    sauceSmoothed.setTargetValue (clamp01 (sauceParam->load() + hit * 0.35f));
-    widthSmoothed.setTargetValue (1.0f + clamp01 (lavashParam->load() + hit * 0.25f));
+    meatSmoothed.setTargetValue (clamp01 (meatParam->load() + hit * HitBoost::meat));
+    spiceSmoothed.setTargetValue (clamp01 (spiceParam->load() + hit * HitBoost::spice));
+    sauceSmoothed.setTargetValue (clamp01 (sauceParam->load() + hit * HitBoost::sauce));
+    widthSmoothed.setTargetValue (1.0f + clamp01 (lavashParam->load() + hit * HitBoost::lavash));
     ambientSmoothed.setTargetValue (ambientParam->load());
-    gainSmoothed.setTargetValue (juce::Decibels::decibelsToGain (hit * 4.0f + stas * 6.0f));
+    gainSmoothed.setTargetValue (juce::Decibels::decibelsToGain (hit * HitBoost::gainDb + stas * 6.0f));
 
     // Фильтры пересчитываем раз в блок — этого достаточно и без аллокаций.
     meatSmoothed.skip (numSamples);

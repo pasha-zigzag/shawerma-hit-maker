@@ -44,6 +44,7 @@ public:
     KnobSlider() = default;
 
     std::unique_ptr<juce::Drawable> icon;
+    float hitBoost = 0.0f; // сколько сейчас добавляет «хит» — рисуется зелёным продолжением дуги
 };
 
 // Тумблер с подписью из двух частей: жирная + приглушённая.
@@ -215,6 +216,7 @@ private:
     double lastTime = 0.0;
     double nextVitalyCameo = 0.0;
     float pulsePhase = 0.0f;
+    float hitVisual = 0.0f; // 0..1, плавно догоняет состояние «хита»
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (HitMakerEditor)
 };

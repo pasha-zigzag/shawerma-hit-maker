@@ -21,6 +21,16 @@ inline constexpr const char* stas    = "stas";
 inline constexpr const char* airhorn = "airhorn";
 } // namespace ParamIDs
 
+// Сколько режим «хит» добавляет к каждой крутилке (доля хода 0..1). Общие для DSP и UI.
+namespace HitBoost
+{
+inline constexpr float meat   = 0.35f;
+inline constexpr float sauce  = 0.35f;
+inline constexpr float spice  = 0.30f;
+inline constexpr float lavash = 0.25f;
+inline constexpr float gainDb = 4.0f;
+} // namespace HitBoost
+
 class HitMakerProcessor : public juce::AudioProcessor
 {
 public:

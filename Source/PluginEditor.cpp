@@ -44,14 +44,15 @@ struct KnobInfo
     const char* subtitle;
     juce::uint32 colour;
     const char* icon;
+    float hitBoost;
 };
 
 const KnobInfo kKnobs[] = {
-    { ParamIDs::meat,    "Мясо",    "низ / бас",      0xffff7a3d, Icons::meat },
-    { ParamIDs::sauce,   "Соус",    "тепло",          0xfff6f1e7, Icons::sauce },
-    { ParamIDs::spice,   "Острота", "верх / яркость", 0xffff4436, Icons::spice },
-    { ParamIDs::lavash,  "Лаваш",   "ширина стерео",  0xfff2c886, Icons::lavash },
-    { ParamIDs::ambient, "Эмбиент", "by Марина",      0xff7fa8ff, Icons::ambient },
+    { ParamIDs::meat,    "Мясо",    "низ / бас",      0xffff7a3d, Icons::meat,    HitBoost::meat },
+    { ParamIDs::sauce,   "Соус",    "тепло",          0xfff6f1e7, Icons::sauce,   HitBoost::sauce },
+    { ParamIDs::spice,   "Острота", "верх / яркость", 0xffff4436, Icons::spice,   HitBoost::spice },
+    { ParamIDs::lavash,  "Лаваш",   "ширина стерео",  0xfff2c886, Icons::lavash,  HitBoost::lavash },
+    { ParamIDs::ambient, "Эмбиент", "by Марина",      0xff7fa8ff, Icons::ambient, 0.0f },
 };
 
 void fillPanel (juce::Graphics& g, juce::Rectangle<float> area, float radius)
@@ -136,6 +137,20 @@ void ShawarmaLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int
 
     drawKnobRing (g, centre, startAngle, endAngle, angle, slider.findColour (juce::Slider::rotarySliderFillColourId));
 
+    // Прибавка от «хита»: зелёное светящееся продолжение дуги поверх значения пользователя.
+    auto* knob = dynamic_cast<KnobSlider*> (&slider);
+    const float boost = knob != nullptr ? juce::jmin (knob->hitBoost, 1.0f - sliderPos) : 0.0f;
+    if (boost > 0.002f)
+    {
+        const float boostEnd = startAngle + (sliderPos + boost) * (endAngle - startAngle);
+        juce::Path boostArc;
+        boostArc.addCentredArc (centre.x, centre.y, 42.5f, 42.5f, 0.0f, angle, boostEnd, true);
+        g.setColour (Palette::green.withAlpha (0.3f));
+        g.strokePath (boostArc, juce::PathStrokeType (12.0f, juce::PathStrokeType::curved, juce::PathStrokeType::butt));
+        g.setColour (Palette::green);
+        g.strokePath (boostArc, juce::PathStrokeType (7.0f, juce::PathStrokeType::curved, juce::PathStrokeType::butt));
+    }
+
     // Диск-лаваш: тень, радиальный градиент, полоски от гриля, затемнение снизу.
     constexpr float discRadius = 33.0f;
     const auto disc = juce::Rectangle<float> (discRadius * 2.0f, discRadius * 2.0f).withCentre (centre);
@@ -163,19 +178,24 @@ void ShawarmaLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int
         g.fillPath (discPath);
     }
 
-    // Указатель — точка у края диска.
-    const auto dot = centre.getPointOnCircumference (discRadius - 6.5f, angle);
-    g.setColour (Palette::meat);
-    g.fillEllipse (juce::Rectangle<float> (7.0f, 7.0f).withCentre (dot));
+    // Указатель — светлая точка в зазоре между диском и дугой: не налезает на цифры.
+    const auto dot = centre.getPointOnCircumference (discRadius + 3.0f, angle);
+    g.setColour (Palette::garlic);
+    g.fillEllipse (juce::Rectangle<float> (6.0f, 6.0f).withCentre (dot));
 
-    if (auto* knob = dynamic_cast<KnobSlider*> (&slider); knob != nullptr && knob->icon != nullptr)
+    if (knob != nullptr && knob->icon != nullptr)
         knob->icon->drawWithin (g, juce::Rectangle<float> (32.0f, 32.0f).withCentre (centre.translated (0.0f, -4.0f)),
                                 juce::RectanglePlacement::centred, 1.0f);
 
+    // С «хитом» показываем, во что превратилось значение: «60→95».
+    auto valueText = slider.getTextFromValue (slider.getValue());
+    if (boost > 0.002f)
+        valueText = juce::String (juce::roundToInt (sliderPos * 100.0f)) + juce::String::fromUTF8 ("→")
+                  + juce::String (juce::roundToInt ((sliderPos + boost) * 100.0f));
+
     g.setColour (Palette::meat);
     g.setFont (fonts->manrope (11.0f, 800));
-    g.drawText (slider.getTextFromValue (slider.getValue()),
-                juce::Rectangle<float> (34.0f, 14.0f).withCentre (centre.translated (0.0f, 19.0f)),
+    g.drawText (valueText, juce::Rectangle<float> (boost > 0.002f ? 48.0f : 34.0f, 14.0f).withCentre (centre.translated (0.0f, 19.0f)),
                 juce::Justification::centred, false);
 }
 
@@ -422,7 +442,7 @@ void CreditsOverlay::paint (juce::Graphics& g)
     g.drawText (utf8 ("Титры"), area.removeFromTop (32.0f), juce::Justification::centred, false);
     g.setColour (Palette::muted);
     g.setFont (fonts->manrope (12.0f));
-    g.drawText (utf8 ("шаВеRMA Hit Maker v1.0 · Melody Makers · Resonance Music Academy"),
+    g.drawText (utf8 ("шаВеRMA Hit Maker v1.0.1 · Melody Makers · Resonance Music Academy"),
                 area.removeFromTop (20.0f), juce::Justification::centred, false);
     area.removeFromTop (10.0f);
 
@@ -587,10 +607,10 @@ void HitMakerEditor::paintHeader (juce::Graphics& g)
 
     // Справа: плашка группы и версия.
     const auto versionFont = fonts->manrope (11.0f, 600);
-    const float versionWidth = textWidth (versionFont, "v1.0");
+    const float versionWidth = textWidth (versionFont, "v1.0.1");
     const float right = (float) (kWidth - kMargin);
     g.setFont (versionFont);
-    g.drawText ("v1.0", juce::Rectangle<float> (right - versionWidth, 22.0f, versionWidth, 20.0f), juce::Justification::centredRight, false);
+    g.drawText ("v1.0.1", juce::Rectangle<float> (right - versionWidth, 22.0f, versionWidth, 20.0f), juce::Justification::centredRight, false);
 
     const auto pillFont = fonts->manrope (11.0f, 700);
     const float pillWidth = textWidth (pillFont, "Melody Makers") + 20.0f;
@@ -714,6 +734,15 @@ void HitMakerEditor::advance (double now, double dt)
 
     if (now >= nextVitalyCameo)
         scheduleVitalyCameo (now);
+
+    // Дуги «хита» плавно дорастают и сжимаются, а не прыгают.
+    const float hitTarget = isHitOn() && ! cooking ? 1.0f : 0.0f;
+    hitVisual += (hitTarget - hitVisual) * juce::jmin (1.0f, (float) dt * 5.0f);
+    if (std::abs (hitTarget - hitVisual) < 0.002f)
+        hitVisual = hitTarget;
+
+    for (size_t i = 0; i < knobs.size(); ++i)
+        knobs[i].slider.hitBoost = kKnobs[i].hitBoost * hitVisual;
 
     toasts.tick (now);
     refreshHitButton();
